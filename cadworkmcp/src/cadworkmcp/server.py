@@ -18,7 +18,7 @@ logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("CadworkMCPServer")
 
-DEFAULT_CADWORK_PORT = 53001
+DEFAULT_CADWORK_PORT = 53002
 SOCKET_TIMEOUT = 30.0  # Increased timeout for potentially longer Cadwork operations
 
 @dataclass

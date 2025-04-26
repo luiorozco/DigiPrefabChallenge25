@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PluginInfo>
+    <Version>1.0.0.0</Version>
+    <Date>2022-04-12</Date>
+    <Author>Lasath</Author>
+    <Name>
+        <Text language="German">Plugin Title - foo bar baz</Text>
+        <Text language="English">Plugin Title - foo bar baz</Text>
+        <Text language="French">Plugin Title - foo bar baz</Text>
+        <Text language="Italian"/>
+        <Text language="Spanish"/>
+        <Text language="Czech"/>
+        <Text language="Finnish"/>
+        <Text language="Russian"/>
+        <Text language="Polish"/>
+        <Text language="Romanian"/>
+        <Text language="Norwegian"/>
+        <Text language="Chinese"/>
+        <Text language="Portuguese"/>
+        <Text language="Estonian"/>
+        <Text language="Japanese"/>
+    </Name>
+    <Description>
+        <Text language="German">
+            <![CDATA[
+Hallo Welt... Plugin Beschreibung
+]]>
+        </Text>
+        <Text language="English">
+            <![CDATA[
+Hello World... Plugin Description
+]]>
+        </Text>
+        <Text language="French">
+            <![CDATA[
+Bonjour le monde... Description du plugin
+]]>
+        </Text>
+        <Text language="Italian"/>
+        <Text language="Spanish"/>
+        <Text language="Czech"/>
+        <Text language="Finnish"/>
+        <Text language="Russian"/>
+        <Text language="Polish"/>
+        <Text language="Romanian"/>
+        <Text language="Norwegian"/>
+        <Text language="Chinese"/>
+        <Text language="Portuguese"/>
+        <Text language="Estonian"/>
+        <Text language="Japanese"/>
+    </Description>
+</PluginInfo>

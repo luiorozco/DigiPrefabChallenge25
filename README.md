@@ -1,2 +1,2 @@
 # DigiPrefabChallenge25
-IntCDC Hackathon Digital Prefabrication Challenge 2025
+Lasath beam spiral test plugin

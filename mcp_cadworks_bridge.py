@@ -35,26 +35,22 @@ def handle(msg: dict) -> dict:
          print("Error: Invalid 'args' format, expected JSON object")
          return {"status": "error", "msg": "Invalid 'args' format, expected JSON object"}
 
+    if op == "ping":
+        print("Handshake ping received.")
+        return {"status": "ok", "message": "pong"}
+
     if op == "get_version_info": # Example handler for the other tool
         try:
             # --- Attempt to get Cadwork version ---
-            # NOTE: uc.get_cadwork_version_info() might not exist or might return
-            # something different. Adapt based on available uc functions.
-            # Trying a known function first:
-            cw_version_str = str(uc.get_cadwork_version()) # get_cadwork_version() returns major version int
-
-            # If you have a more detailed info function, use it:
-            # version_info_dict = uc.get_cadwork_version_info() # Example if this exists
-            # cw_version_str = version_info_dict.get('version', 'unknown') # Example
-
+            cw_version_str = str(uc.get_3d_version())  # Correct API call per docs
             print(f"Successfully retrieved Cadwork version: {cw_version_str}")
-            return {"status": "ok", "cw_version": cw_version_str, "plugin_version": "0.1.0_logged"} # Added suffix
+            return {"status": "ok", "cw_version": cw_version_str, "plugin_version": "0.1.0_logged"}
         except AttributeError:
-             print("Error: utility_controller has no 'get_cadwork_version' or expected 'get_cadwork_version_info'")
-             return {"status": "error", "msg": "Failed to get version info: Function not found in utility_controller"}
+            print("Error: utility_controller has no 'get_3d_version'")
+            return {"status": "error", "msg": "Failed to get version info: Function not found in utility_controller"}
         except Exception as e:
             print(f"Error in get_version_info: {e}")
-            traceback.print_exc() # Print traceback for unexpected errors here
+            traceback.print_exc()
             return {"status": "error", "msg": f"Failed to get version info: {e}"}
 
     if op == "get_model_name":

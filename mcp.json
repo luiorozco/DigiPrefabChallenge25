@@ -1,12 +1,21 @@
 {
-    "mcpServers": {
-      "cadwork": {
-        "command": "C:\\Users\\Samko\\Documents\\Github\\DigiPrefabChallenge25\\venv\\Scripts\\python.exe",
-        "args": ["C:\\Users\\Samko\\Documents\\Github\\DigiPrefabChallenge25\\cadworkmcp\\src\\cadworkmcp\\server.py"],
-        "env": {
-          "CW_PORT": "53002"
-        },
-        "transport": "sse" 
-      }
+  "mcpServers": {
+    "cadwork": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "C:\\Users\\lasaths\\Github\\DigiPrefabChallenge25",
+        "run",
+        "mcp_server.py",
+        "--transport",
+        "http",
+        "--port",
+        "8001"
+      ],
+      "env": {
+        "CW_PORT": "53002"
+      },
+      "uri": "http://localhost:8001"
     }
   }
+}

@@ -3,7 +3,8 @@
     "cadwork": {
       "command": "python",
       "args": [
-        "C:\\Users\\Samko\\Documents\\Github\\DigiPrefabChallenge25_new\\DigiPrefabChallenge25\\mcp_server.py",
+        "C:\\Users\\lenovo\\Documents\\GitHub\\DigiPrefabChallenge25\\mcp_server.py",
+        "mcp_server.py",
         "--transport",
         "http",
         "--port",

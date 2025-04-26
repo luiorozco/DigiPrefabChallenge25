@@ -5,6 +5,8 @@ cadwork_mcp.py  – minimal MCP bridge (v3, proper point_3d conversion, added lo
 import socket, json, threading, traceback
 import utility_controller as uc
 import element_controller as ec
+import geometry_controller as gc
+import attribute_controller as ac
 import cadwork             
 HOST, PORT = "127.0.0.1", 53002          # keep your chosen port
 
@@ -19,6 +21,13 @@ def to_pt(v):
     except (ValueError, TypeError) as e:
         raise ValueError(f"Invalid coordinate in point {v}: {e}")
 
+def pt_to_list(pt: cadwork.point_3d) -> list[float]:
+    """Convert cadwork.point_3d -> [x, y, z] list"""
+    if not isinstance(pt, cadwork.point_3d):
+        # Return a default or raise error if input is not a point_3d
+        print(f"Warning: pt_to_list received non-point_3d: {type(pt)}")
+        return [0.0, 0.0, 0.0] # Or raise TypeError
+    return [pt.x, pt.y, pt.z]
 
 # ───────── dispatcher ─────────────────────────────────────────────────────────
 def handle(msg: dict) -> dict:
@@ -27,13 +36,13 @@ def handle(msg: dict) -> dict:
 
     if not isinstance(msg, dict):
         print("Error: Invalid message format, expected JSON object")
-        return {"status": "error", "msg": "Invalid message format, expected JSON object"}
+        return {"status": "error", "message": "Invalid message format, expected JSON object"}
 
     args = msg.get("args", {}) # Get args, default to empty dict if missing
 
     if not isinstance(args, dict):
          print("Error: Invalid 'args' format, expected JSON object")
-         return {"status": "error", "msg": "Invalid 'args' format, expected JSON object"}
+         return {"status": "error", "message": "Invalid 'args' format, expected JSON object"}
 
     if op == "ping":
         print("Handshake ping received.")
@@ -47,11 +56,11 @@ def handle(msg: dict) -> dict:
             return {"status": "ok", "cw_version": cw_version_str, "plugin_version": "0.1.0_logged"}
         except AttributeError:
             print("Error: utility_controller has no 'get_3d_version'")
-            return {"status": "error", "msg": "Failed to get version info: Function not found in utility_controller"}
+            return {"status": "error", "message": "Failed to get version info: Function not found in utility_controller"}
         except Exception as e:
             print(f"Error in get_version_info: {e}")
             traceback.print_exc()
-            return {"status": "error", "msg": f"Failed to get version info: {e}"}
+            return {"status": "error", "message": f"Failed to get version info: {e}"}
 
     if op == "get_model_name":
         try:
@@ -61,7 +70,7 @@ def handle(msg: dict) -> dict:
         except Exception as e:
             print(f"Error in get_model_name: {e}")
             traceback.print_exc()
-            return {"status": "error", "msg": f"Failed to get model name: {e}"}
+            return {"status": "error", "message": f"Failed to get model name: {e}"}
 
     if op == "create_beam":
         try:
@@ -108,21 +117,96 @@ def handle(msg: dict) -> dict:
                 # Handle cases where Cadwork might return 0 or negative on failure without exception
                 err_msg = f"ec.create_rectangular_beam_points returned unexpected value: {beam_id}"
                 print(f"Error: {err_msg}")
-                return {"status": "error", "msg": err_msg, "returned_id": beam_id}
+                return {"status": "error", "message": err_msg, "returned_id": beam_id}
 
         except (ValueError, TypeError) as e: # Catch specific conversion/validation errors
              print(f"Input Error in create_beam: {e}")
              # traceback.print_exc() # Keep commented unless needed
-             return {"status": "error", "msg": f"Invalid input for create_beam: {e}"}
+             return {"status": "error", "message": f"Invalid input for create_beam: {e}"}
         except Exception as e: # Catch other Cadwork API errors
             print(f"Cadwork API Error in create_beam: {e}")
             traceback.print_exc() # Print full traceback for unexpected errors
             # Try to provide a more specific error message if possible
-            return {"status": "error", "msg": f"Cadwork API error: {type(e).__name__} - {e}"}
+            return {"status": "error", "message": f"Cadwork API error: {type(e).__name__} - {e}"}
+
+    if op == "get_element_info":
+        try:
+            print(f"Handling 'get_element_info' with args: {args}")
+            element_id_arg = args.get("element_id")
+            if element_id_arg is None:
+                raise ValueError("Missing required argument: element_id")
+
+            element_id = int(element_id_arg) # Ensure it's an integer
+
+            print(f"Retrieving info for element ID: {element_id}")
+
+            # Retrieve geometric information
+            # Note: These might raise errors if the element ID is invalid or not applicable type
+            p1 = gc.get_p1(element_id)
+            p2 = gc.get_p2(element_id)
+            p3 = gc.get_p3(element_id)
+            vec_x = gc.get_xl(element_id)
+            vec_y = gc.get_yl(element_id)
+            vec_z = gc.get_zl(element_id)
+
+            # Basic type check (example - needs actual API function if available)
+            # element_type = "unknown"
+            # try:
+            #     if ac.is_beam(element_id): # Assuming ac.is_beam exists
+            #         element_type = "beam"
+            #     elif ac.is_panel(element_id): # ac.is_panel exists
+            #          element_type = "panel"
+            # except AttributeError:
+            #      print("AttributeController does not have is_beam/is_panel yet.")
+            # For now, we'll just return the geometry
+
+            element_info = {
+                "element_id": element_id,
+                # "type": element_type, # Add later if type detection is feasible
+                "geometry": {
+                    "p1": pt_to_list(p1),
+                    "p2": pt_to_list(p2),
+                    "p3": pt_to_list(p3),
+                    "vector_x": pt_to_list(vec_x),
+                    "vector_y": pt_to_list(vec_y),
+                    "vector_z": pt_to_list(vec_z),
+                },
+                # "attributes": {} # Placeholder for future attribute retrieval
+            }
+            print(f"Successfully retrieved info for element {element_id}")
+            return {"status": "ok", "info": element_info}
+
+        except (ValueError, TypeError) as e:
+             print(f"Input Error in get_element_info: {e}")
+             return {"status": "error", "message": f"Invalid input for get_element_info: {e}"}
+        except Exception as e: # Catch Cadwork API errors (e.g., invalid ID)
+            print(f"Cadwork API Error in get_element_info for ID {args.get('element_id')}: {e}")
+            # Check if the error suggests the element ID doesn't exist
+            if "element not found" in str(e).lower() or "invalid element id" in str(e).lower():
+                 return {"status": "error", "message": f"Element ID {args.get('element_id')} not found or invalid."}
+            traceback.print_exc()
+            return {"status": "error", "message": f"Cadwork API error: {type(e).__name__} - {e}"}
+
+    if op == "get_active_element_ids":
+        try:
+            print(f"Handling 'get_active_element_ids' with args: {args}")
+            active_element_ids = ec.get_active_identifiable_element_ids()
+            print(f"Retrieved active element IDs: {active_element_ids}")
+            return {"status": "ok", "element_ids": active_element_ids}
+        except AttributeError as ae:
+             # Handle case where this guess is also wrong
+             print(f"AttributeError in get_active_element_ids: {ae}")
+             traceback.print_exc()
+             return {"status": "error", "message": f"Failed to find function for getting active elements: {ae}"}
+        except Exception as e:
+            print(f"Error in get_active_element_ids: {e}")
+            traceback.print_exc()
+            # Ensure the key is "message" for the error response
+            return {"status": "error", "message": f"Failed to get active element IDs: {e}"}
 
     # Fallback for unknown operations
     print(f"Unknown operation received: {op}")
-    return {"status": "error", "msg": f"unknown operation '{op}'"}
+    return {"status": "error", "message": f"unknown operation '{op}'"}
 
 
 # ───────── socket thread ──────────────────────────────────────────────────────
@@ -238,7 +322,7 @@ def socket_server():
                     print(f"[{threading.current_thread().name}] Handle function returned: {response}")
                     if response is None:
                          print(f"[{threading.current_thread().name}] !!! Warning: handle function returned None for op {parsed_msg.get('operation')} !!!")
-                         response = {"status": "error", "msg": "Handler function returned None"}
+                         response = {"status": "error", "message": "Handler function returned None"}
 
                     response_bytes = json.dumps(response).encode('utf-8')
                     response_snippet = response_bytes[:500].decode('utf-8', errors='replace')
@@ -249,7 +333,7 @@ def socket_server():
                 except UnicodeDecodeError as ude:
                     print(f"[{threading.current_thread().name}] !!! Unicode Decode Error: {ude} !!!")
                     print(f"[{threading.current_thread().name}] Problematic raw data (approx location):", raw[max(0, ude.start-20):ude.end+20])
-                    response = {"status": "error", "msg": f"Invalid UTF-8 data received: {ude}"}
+                    response = {"status": "error", "message": f"Invalid UTF-8 data received: {ude}"}
                 except json.JSONDecodeError as jde:
                     print(f"[{threading.current_thread().name}] !!! JSON Decode Error: {jde} !!!")
                     # Log the decoded string if decoding worked, otherwise raw bytes
@@ -257,11 +341,11 @@ def socket_server():
                          print(f"[{threading.current_thread().name}] Problematic decoded data: {decoded_data}")
                     else:
                          print(f"[{threading.current_thread().name}] Problematic raw data: {raw}")
-                    response = {"status": "error", "msg": f"Invalid JSON format received: {jde}"}
+                    response = {"status": "error", "message": f"Invalid JSON format received: {jde}"}
                 except Exception as handle_err:
                     print(f"[{threading.current_thread().name}] !!! Error during handle/response phase: {handle_err} !!!")
                     traceback.print_exc()
-                    response = {"status": "error", "msg": f"Internal server error: {type(handle_err).__name__} - {handle_err}"}
+                    response = {"status": "error", "message": f"Internal server error: {type(handle_err).__name__} - {handle_err}"}
 
                 # --- Attempt to send error response if needed ---
                 if response and response.get("status") == "error":

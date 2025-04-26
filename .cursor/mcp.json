@@ -9,10 +9,8 @@
         "--port",
         "8001"
       ],
-      "env": {
-        "CW_PORT": "53002"
-      },
-      "uri": "http://localhost:8001"
+      "transport": "http",
+      "port": "8001"
     }
   }
-}
+} 

@@ -3,9 +3,9 @@
     "cadwork": {
       "command": "uv",
       "args": [
-        "--directory",
-        "C:\\Users\\lasaths\\Github\\DigiPrefabChallenge25",
         "run",
+        "--directory",
+        "C:\\Users\\Samko\\Documents\\Github\\DigiPrefabChallenge25_new\\DigiPrefabChallenge25",
         "mcp_server.py",
         "--transport",
         "http",

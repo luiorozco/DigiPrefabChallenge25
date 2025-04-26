@@ -1,0 +1,12 @@
+{
+    "mcpServers": {
+      "cadwork": {
+        "command": "C:\\Users\\Samko\\Documents\\Github\\DigiPrefabChallenge25\\venv\\Scripts\\python.exe",
+        "args": ["C:\\Users\\Samko\\Documents\\Github\\DigiPrefabChallenge25\\cadworkmcp\\src\\cadworkmcp\\server.py"],
+        "env": {
+          "CW_PORT": "53002"
+        },
+        "transport": "sse" 
+      }
+    }
+  }

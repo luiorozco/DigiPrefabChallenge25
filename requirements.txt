@@ -34,3 +34,11 @@ typing_extensions==4.13.2
 userpath==1.9.2
 uv==0.6.17
 uvicorn==0.34.2
+openai>=1.12.0
+chromadb>=0.4.23
+python-dotenv
+tqdm
+dotenv
+duckdb>=0.10.2
+pandas
+tabulate

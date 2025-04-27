@@ -130,10 +130,10 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "sql_query",
-            "description": "Run SQL on table 'bim' for counts, sums, filters, lists.",
+            "description": "Executes a SQL query against the 'bim' table containing structured BIM data. Use for precise questions involving counts, sums, averages, filtering by specific known values (e.g., material='CLT', nombre='Wall 01'), or retrieving exact lists.",
             "parameters": {
                 "type": "object",
-                "properties": {"query": {"type": "string"}},
+                "properties": {"query": {"type": "string", "description": "The SQL query string to execute."}},
                 "required": ["query"],
             },
         }
@@ -142,10 +142,10 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "vector_search",
-            "description": "Return up to 10 semantically similar BIM rows.",
+            "description": "Performs a semantic search over descriptive sentences generated from BIM element data. Use for open-ended questions, finding elements based on conceptual similarity or textual descriptions (e.g., 'find elements related to external walls', 'search for comments about connections'), or exploring related items when exact criteria are unknown. Returns up to 10 most similar results.",
             "parameters": {
                 "type": "object",
-                "properties": {"question": {"type": "string"}},
+                "properties": {"question": {"type": "string", "description": "The natural language question or search query for semantic search."}},
                 "required": ["question"],
             },
         }

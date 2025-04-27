@@ -118,11 +118,14 @@ async def server_lifespan(server: FastMCP) -> AsyncIterator[Dict[str, Any]]:
             logger.warning(f"Handshake failed: {hs_err}")
     except Exception as e:
         logger.error(f"Error during initial handshake attempt to Cadwork plug-in: {str(e)}")
-    yield {"cadwork_handshake_ok": handshake_ok}
-    logger.info("CadworkMCP server shutting down...")
-    _cadwork_connection = None
-    logger.info("Cadwork plug-in connection closed.")
 
+    # Yield only the cadwork status, like the old version
+    yield {"cadwork_handshake_ok": handshake_ok}
+
+    # --- Cleanup --- #
+    logger.info("CadworkMCP server shutting down...")
+    _cadwork_connection = None # Clear Cadwork connection info
+    logger.info("Cadwork plug-in connection info cleared.")
 
 # Create the MCP server instance
 mcp = FastMCP(
@@ -501,12 +504,14 @@ async def list_defined_user_attributes() -> dict:
 
     return response
 
-
 if __name__ == "__main__":
     # When running with stdio, mcp.run often handles the event loop.
     # Call it directly without async def main() or asyncio.run().
+    # Explicitly ignore command-line arguments to ensure stdio transport
+    # even if launched with unexpected args (e.g., by Cursor).
     logger.info("Starting CadworkMCP server with stdio transport...")
     try:
+        # Force stdio transport regardless of sys.argv
         mcp.run(transport='stdio')
     except KeyboardInterrupt:
         logger.info("Server stopped by user.")

@@ -35,6 +35,11 @@ from chromadb.config import Settings
 from chromadb.utils.embedding_functions import OpenAIEmbeddingFunction
 import openai
 
+# ANSI colors
+C_CYAN  = '\033[96m'
+C_GREEN = '\033[92m'
+C_RESET = '\033[0m'
+
 # ---------------------- env & paths ---------------------------------------
 load_dotenv()
 API_KEY = os.getenv("OPENAI_API_KEY")
@@ -158,22 +163,26 @@ SYSTEM_PROMPT = (
 
 # ---------------------- chat function -------------------------------------
 
-def chat(user_q: str) -> str:
-    msgs = [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user",   "content": user_q},
-    ]
+def chat(user_q: str, history: List[dict]) -> tuple[str, List[dict]]:
+    """Processes a user query within a conversation history."""
+    # Append the new user message to the history
+    history.append({"role": "user", "content": user_q})
+
     while True:
         resp = openai_client.chat.completions.create(
-            model="gpt-4o-mini",
-            temperature=0,
-            messages=msgs,
+            model="o4-mini-2025-04-16",
+            messages=history, # Pass the entire history
             tools=TOOLS,
             tool_choice="auto",
         )
         msg = resp.choices[0].message
+
+        # Append the assistant's response (potentially with tool calls)
+        history.append(msg)
+
         if msg.tool_calls:
-            msgs.append(msg)  # Append the assistant message with tool_calls
+            # Append the assistant message with tool_calls before processing
+            # (Already appended above)
             for call in msg.tool_calls:
                 func_name = call.function.name
                 args = json.loads(call.function.arguments)
@@ -185,9 +194,13 @@ def chat(user_q: str) -> str:
                     # Handle unknown function call if necessary
                     func_out = f"Unknown function: {func_name}"
 
-                msgs.append({"role": "tool", "tool_call_id": call.id, "name": func_name, "content": func_out})
+                # Append the tool result message
+                history.append({"role": "tool", "tool_call_id": call.id, "name": func_name, "content": func_out})
             continue  # loop; GPT will produce final answer next
-        return msg.content.strip()
+
+        # If no tool calls, it's the final answer
+        final_response = msg.content.strip() if msg.content else "Sorry, I couldn't generate a response."
+        return final_response, history # Return the response and updated history
 
 # --- raw SQL helper -------------------------------------------------
 if len(sys.argv) > 1 and sys.argv[1] == "--sql":
@@ -196,5 +209,24 @@ if len(sys.argv) > 1 and sys.argv[1] == "--sql":
 
 # ---------------------- CLI ----------------------------------------------
 if __name__ == "__main__":
-    question = " ".join(sys.argv[1:]) or input("Ask > ")
-    print(chat(question))
+    print("BIM Assistant Activated. Type 'exit' or 'quit' to end.")
+    # Initialize conversation history with the system prompt
+    conversation_history = [{"role": "system", "content": SYSTEM_PROMPT}]
+    while True:
+        try:
+            question = input(f"{C_CYAN}Ask > {C_RESET}")
+            if question.lower() in ["exit", "quit"]:
+                break
+            if not question:
+                continue
+
+            answer, conversation_history = chat(question, conversation_history)
+            print(f"{C_GREEN}Assistant: {C_RESET}{answer}")
+
+        except (KeyboardInterrupt, EOFError):
+            print("\nExiting...")
+            break
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            # Optionally reset history or try to recover
+            # conversation_history = [{"role": "system", "content": SYSTEM_PROMPT}]

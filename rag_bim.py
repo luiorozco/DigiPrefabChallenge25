@@ -126,7 +126,7 @@ def sql_query(query: str) -> str:
 
 
 def vector_search(question: str) -> str:
-    res = vector.query(question, n_results=10)
+    res = vector.query(question, n_results=40)
     return "\n".join(res["documents"][0])
 
 # ---------------------- OpenAI function-calling ---------------------------
@@ -157,8 +157,42 @@ TOOLS = [
     },
 ]
 SYSTEM_PROMPT = (
-    "You are a BIM assistant. Use sql_query for numeric/list queries; "
-    "use vector_search for explanatory/contextual ones."
+    "You are a BIM assistant. Use sql_query for precise numeric/filtering/listing queries; "
+    "use vector_search for open-ended semantic/contextual searches."
+    "\\n\\n"
+    "The 'bim' table contains the following attributes (columnas):"
+    "\\n"
+    "English (Spanish):"
+    "\\n"
+    "1. nombre (nombre)          (VARCHAR) - Name"
+    "\\n"
+    "2. grupo (grupo)           (VARCHAR) - Group"
+    "\\n"
+    "3. subgrupo (subgrupo)        (VARCHAR) - Subgroup"
+    "\\n"
+    "4. material (material)        (VARCHAR) - Material"
+    "\\n"
+    "5. longitud (longitud)        (DOUBLE)  - Original Length (units may vary)"
+    "\\n"
+    "6. vol (volumen)             (DOUBLE)  - Original Volume (units may vary)"
+    "\\n"
+    "7. sup (superficie)          (DOUBLE)  - Original Surface Area (units may vary)"
+    "\\n"
+    "8. anchura (anchura)         (DOUBLE)  - Original Width (units may vary)"
+    "\\n"
+    "9. altura (altura)          (DOUBLE)  - Original Height (units may vary)"
+    "\\n"
+    "10. longitud_m (longitud_m)     (DOUBLE)  - Length in meters"
+    "\\n"
+    "11. volumen_m3 (volumen_m3)     (DOUBLE)  - Volume in cubic meters"
+    "\\n"
+    "12. superficie_m2 (superficie_m2)  (DOUBLE)  - Surface Area in square meters"
+    "\\n"
+    "13. comentario (comentario)     (VARCHAR) - Comment"
+    "\\n\\n"
+    "Prioritize using the _m, _m3, _m2 attributes for calculations unless asked otherwise."
+    "If you are asked about a more complex question that cannot be answered by a single tool call, use your own knowledge to summarize the data provided by the tools."
+    "Convey your answers in professional and easy-to-understand language, suitable for clients or non-experts."
 )
 
 # ---------------------- chat function -------------------------------------

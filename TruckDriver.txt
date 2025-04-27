@@ -1,0 +1,107 @@
+
+=== Profile: Professional Truck Driver for International Timber Construction Transport (Egoin Wood) ===
+
+General Information:
+- Name: Marcos Ortega
+- Age: 44 years
+- Occupation: Professional truck driver (heavy and special timber transports)
+- Company: Egoin Wood (Spain, Basque Country)
+- Languages: Spanish (native), basic knowledge of English and German
+
+Professional Background:
+- 22 years of experience as a professional driver
+- 7 years specialized in CLT and Glulam transports
+- International transport (Spain, France, Germany, Switzerland)
+
+Vehicle Data:
+- Tractor unit: Mercedes-Benz Actros 1853 LS (Euro 6d), 530 HP
+- Trailer: Extendable semi-trailer up to 22 meters, steerable axles
+- Equipment: GPS navigation for heavy transport, digital load securing, telematics system
+
+Cargo:
+- CLT panels, Glulam beams, timber modules
+- Lengths: 8–16 meters, special transports up to 22 meters
+- Weight: up to 10 tons per element
+- Special requirements: Moisture protection, sensitive visible surfaces
+
+Typical Tasks:
+- Visual inspection of vehicle and cargo
+- Checking transport documents
+- Adjust driving style according to load, perform securing checks
+- Communication with dispatch and construction site
+- Unloading and documentation at the construction site
+- Coordination with crane operator during unloading
+- Weather-related protective measures during transport
+
+Technical Knowledge:
+- Load securing according to VDI 2700ff and EU standards
+- Special transport and construction site logistics
+- Basic knowledge of timber construction systems (CLT, Glulam)
+- Use of digital transport and processing platforms
+- Understanding of basic crane operations for alignment during unloading
+
+Personal Attributes:
+- High level of responsibility and flexibility
+- Ability to concentrate and work under pressure
+- Customer-oriented and a team player
+- Strong spatial awareness for maneuvering on tight construction sites
+
+Typical Challenges:
+- International route planning
+- Just-in-time deliveries to tight construction schedules
+- Dealing with delays and unforeseen situations
+- Maneuvering and unloading on confined or uneven construction sites
+- Handling last-minute logistical changes
+
+=== Relevant BIM Model Information for the Driver ===
+
+1. Assembly Sequence of Elements:
+- Unloading sequence according to the assembly plan
+- Identification of critical elements (to be assembled first)
+- Grouping elements logically for unloading efficiency
+
+2. Element Information:
+- Dimensions (length, width, height) and weights of each element
+- Center of gravity indication for each component
+- Surface sensitivity notes: untreated, finished surfaces, glass elements
+- Exact labeling system (e.g., QR codes or color markings) to match elements to the assembly sequence
+
+3. Construction Site Logistics:
+- Access routes with specific width and weight restrictions
+- Ground conditions: paved/unpaved, slope details
+- Crane positioning points and required approach paths
+- Temporary storage zones for elements, if direct assembly is not possible
+- Reserved truck waiting zones, if arrival is earlier than unloading time
+
+4. Schedule and Assembly Times:
+- Scheduled delivery time windows (date/time per element/group)
+- Buffer zones for unavoidable delays (time frame for acceptable waiting)
+- Notifications of last-minute changes to site operations
+
+5. Safety and Handling Instructions:
+- Stability information for unloading heavy or asymmetric parts
+- Recommended slinging points and handling equipment (straps, spreader beams)
+- Special notes on weather (e.g., elements must not be exposed to rain without covers)
+- Critical warnings: elements requiring immediate installation without intermediate storage
+
+6. Communication Data:
+- Name, role, and direct phone number of site contact persons
+- Site crane operator's contact for unloading coordination
+- Dispatch center emergency number for logistics or vehicle breakdowns
+
+=== Specific Information Needs of the Driver ===
+
+- Clearly organized and pre-assigned unloading sequences linked to the loading layout in the trailer.
+- Advance information on element priority, critical surfaces, and weight distribution to optimize load securing.
+- Clear, visual identification systems for each component to minimize unloading errors.
+- Highly detailed construction site access information, including any temporary obstructions, traffic regulations, or detour routes.
+- Explicit indication of whether on-site crane unloading is immediately available or if self-unloading equipment is needed.
+- Real-time notification system for dynamic changes to schedules, site conditions, or unloading plans.
+- Simplified "Transport View" extracted from BIM model, only showing relevant load-handling and site navigation information.
+- Clear instructions for special handling situations such as fragile panels, modules requiring upright storage, or components with pre-installed façade elements.
+- Safety protocols adapted to weather forecasts (e.g., wind warnings for crane operations during unloading).
+- Backup plans for temporary storage and protection if unloading must be postponed.
+
+=== Summary ===
+
+The driver requires highly structured and filtered information from the BIM model that focuses on the practical, operational, and safety-related aspects of the transport and unloading process. Detailed technical data, clear logistics pathways, and dynamic communication channels are essential to ensure efficiency, prevent damage, and guarantee compliance with international transport and construction site standards. Complete 3D models are unnecessary; targeted transport-focused extracts and simplified action plans are crucial.

@@ -62,7 +62,8 @@ class CadworkConnection:
             if response.get("status") == "error":
                 error_message = response.get("message", "Unknown error from Cadwork plug-in")
                 logger.error(f"Cadwork plug-in error: {error_message}")
-                raise Exception(error_message)
+                # Do not raise generic Exception here, let the caller handle the error status
+                # raise Exception(error_message)
             return response
         except socket.timeout:
             logger.error("[Per-call] Socket timeout while waiting for response from Cadwork plug-in")
@@ -126,7 +127,7 @@ async def server_lifespan(server: FastMCP) -> AsyncIterator[Dict[str, Any]]:
 # Create the MCP server instance
 mcp = FastMCP(
     "CadworkMCP",
-    version="0.1.0", # Start with an initial version
+    version="0.1.1", # Updated version
     description="Integrates with a running Cadwork instance via its Python API plug-in.",
     lifespan=server_lifespan
 )
@@ -135,7 +136,7 @@ mcp = FastMCP(
 # @mcp.resource(...)
 # async def get_active_document(...): ...
 
-# --- Placeholder for Tools ---
+# --- Tools ---
 @mcp.tool(
     name="get_cadwork_version_info",
     description="Retrieves detailed version information from the connected Cadwork application and the MCP bridge plug-in. Returns a dictionary containing keys like 'cw_version' and 'plugin_version' on success."
@@ -146,20 +147,17 @@ async def get_cadwork_version_info() -> Dict[str, Any]:
     response = {"status": "error", "message": "Unknown error"}
     try:
         connection = get_cadwork_connection() # Raises ConnectionError if not connected
-        # This assumes the inner Cadwork plug-in handles an operation named "get_version_info"
-        # and returns a dict with keys like 'cw_version', 'plugin_version' upon success.
         plugin_response = connection.send_command("get_version_info", {})
 
         # Check the status from the plugin_response itself
         if plugin_response.get("status") == "ok":
             logger.info(f"Received version info from plug-in: {plugin_response}")
-            # Relay the successful response structure
-            response = plugin_response
         else:
             # The plugin reported an error
             error_msg = plugin_response.get("message", "Plug-in returned an error status.")
             logger.error(f"Plug-in reported error for get_version_info: {error_msg}")
-            response["message"] = error_msg
+        # Always return the raw response from the bridge
+        response = plugin_response
 
     except ConnectionError as e:
         logger.error(f"Connection error in get_cadwork_version_info: {e}")
@@ -213,15 +211,9 @@ async def create_beam(
             "width": float(width),
             "height": float(height)
         }
-
-        # Explicitly set p3 if not provided
+        # Only include p3 if it was provided
         if p3 is not None:
             args["p3"] = [float(c) for c in p3]
-        else:
-            # Calculate default p3 (point vertically above p1)
-            args["p3"] = [args["p1"][0], args["p1"][1], args["p1"][2] + 1.0]
-            logger.info(f"Calculated default p3: {args['p3']}")
-
 
         # Log arguments just before sending
         logger.info(f"Attempting to send 'create_beam' command with args: {args}")
@@ -231,11 +223,11 @@ async def create_beam(
         # Check response status
         if plugin_response.get("status") == "ok":
             logger.info(f"Beam created successfully: {plugin_response}")
-            response = plugin_response
         else:
             error_msg = plugin_response.get("message", "Plug-in returned an error status.")
             logger.error(f"Plug-in reported error for create_beam: {error_msg}")
-            response["message"] = error_msg
+        # Return the raw response from the bridge
+        response = plugin_response
 
     except ValueError as ve: # Catch specific validation errors
         logger.error(f"Input validation error in create_beam: {ve}")
@@ -254,10 +246,10 @@ async def create_beam(
 
 @mcp.tool(
     name="get_element_info",
-    description="Retrieves detailed geometric information for a specific Cadwork element identified by its integer `element_id`. Returns a dictionary containing the element's ID and a 'geometry' sub-dictionary with its defining points (`p1`, `p2`, `p3`) and local coordinate system vectors (`vector_x`, `vector_y`, `vector_z`) as lists of coordinates [x, y, z]."
+    description="Retrieves detailed geometric information (points p1, p2, p3 and vectors x, y, z) and common attributes (like material and group) for a specific Cadwork element identified by its integer `element_id`. Returns a dictionary containing the element's ID, a 'geometry' sub-dictionary, and an 'attributes' sub-dictionary."
 )
 async def get_element_info(element_id: int) -> dict:
-    """Retrieves geometric information for a given element ID via the socket plug-in."""
+    """Retrieves geometric and attribute information for a given element ID via the socket plug-in."""
     logger.info(f"Tool 'get_element_info' called with element_id={element_id}")
     response = {"status": "error", "message": "Unknown error"}
 
@@ -279,12 +271,11 @@ async def get_element_info(element_id: int) -> dict:
         # Check response status
         if plugin_response.get("status") == "ok":
             logger.info(f"Element info retrieved successfully: {plugin_response.get('info')}")
-            # Relay the successful response structure (which contains the 'info' field)
-            response = plugin_response
         else:
             error_msg = plugin_response.get("message", "Plug-in returned an error status.")
             logger.error(f"Plug-in reported error for get_element_info: {error_msg}")
-            response["message"] = error_msg
+        # Return the raw response from the bridge
+        response = plugin_response
 
     except ValueError as ve: # Catch specific validation errors
         logger.error(f"Input validation error in get_element_info: {ve}")
@@ -323,15 +314,17 @@ async def get_active_element_ids() -> dict:
             # Ensure the key matches what the bridge sends on success
             if "element_ids" in plugin_response:
                 logger.info(f"Active element IDs retrieved successfully: {plugin_response.get('element_ids')}")
-                # Relay the successful response structure (which contains the 'element_ids' field)
-                response = plugin_response
             else:
                 logger.error(f"Plug-in success response for get_active_element_ids missing 'element_ids' key: {plugin_response}")
+                # Modify response if key is missing but status was ok
+                response["status"] = "error"
                 response["message"] = "Plug-in response missing 'element_ids' key."
+                return response # Return early with error status
         else:
             error_msg = plugin_response.get("message", "Plug-in returned an error status.")
             logger.error(f"Plug-in reported error for get_active_element_ids: {error_msg}")
-            response["message"] = error_msg
+        # Return the raw response from the bridge
+        response = plugin_response
 
     except ConnectionError as e:
         logger.error(f"Connection error in get_active_element_ids: {e}")
@@ -344,6 +337,170 @@ async def get_active_element_ids() -> dict:
         response["message"] = f"An unexpected server error occurred: {e}"
 
     return response
+
+
+@mcp.tool(
+    name="get_standard_attributes",
+    description=(
+        "Retrieves common standard attributes for a list of specified element IDs. "
+        "Standard attributes include: name, group, subgroup, material name, and comment. "
+        "This is useful for gathering basic classification and identification data about elements. "
+        "Example Use Case: Get the name, group, and material for elements [101, 105] to display in a report. "
+        "Returns a dictionary where keys are the integer element IDs and values are dictionaries of the retrieved attributes. "
+        "If an attribute cannot be retrieved for a specific element (e.g., not set or error), its value might be null or contain an error marker."
+    )
+)
+async def get_standard_attributes(element_ids: List[int]) -> dict:
+    """Retrieves standard attributes for a list of element IDs via the socket plug-in."""
+    logger.info(f"Tool 'get_standard_attributes' called with {len(element_ids)} element IDs.")
+    response = {"status": "error", "message": "Unknown error"}
+
+    try:
+        # --- Input Validation ---
+        if not isinstance(element_ids, list):
+             raise ValueError("element_ids must be a list.")
+        if not all(isinstance(eid, int) and eid >= 0 for eid in element_ids):
+             raise ValueError("All element_ids must be non-negative integers.")
+        # --- End Input Validation ---
+
+        if not element_ids:
+             logger.info("Received empty element_ids list. Returning empty success response.")
+             return {"status": "ok", "attributes_by_id": {}}
+
+        connection = get_cadwork_connection()
+        args = {"element_ids": element_ids}
+        logger.info(f"Attempting to send 'get_standard_attributes' command with args: {args}")
+        plugin_response = connection.send_command("get_standard_attributes", args)
+
+        # Log success or error based on bridge response
+        if plugin_response.get("status") == "ok":
+            count = len(plugin_response.get("attributes_by_id", {}))
+            logger.info(f"Standard attributes retrieved successfully for {count} elements.")
+        else:
+            error_msg = plugin_response.get("message", "Plug-in returned an error status.")
+            logger.error(f"Plug-in reported error for get_standard_attributes: {error_msg}")
+        response = plugin_response # Return raw bridge response
+
+    except ValueError as ve:
+        logger.error(f"Input validation error in get_standard_attributes: {ve}")
+        response["message"] = str(ve)
+    except ConnectionError as e:
+        logger.error(f"Connection error in get_standard_attributes: {e}")
+        response["message"] = f"Failed to connect to Cadwork plug-in: {e}"
+    except TimeoutError as e:
+        logger.error(f"Timeout error in get_standard_attributes: {e}")
+        response["message"] = f"Timeout communicating with Cadwork plug-in: {e}"
+    except Exception as e:
+        logger.error(f"Unexpected error in get_standard_attributes: {e}", exc_info=True)
+        response["message"] = f"An unexpected server error occurred: {e}"
+
+    return response
+
+
+@mcp.tool(
+    name="get_user_attributes",
+    description=(
+        "Retrieves the values of specific user-defined attributes (identified by their integer number) for a list of specified element IDs. "
+        "User attributes store custom data associated with elements (e.g., cost codes, phase information, manufacturing status). "
+        "You must provide both the element IDs and the list of attribute numbers you want to retrieve. "
+        "Example Use Case: For elements [201, 202], get the values of user attributes number 10 ('CostCode') and 15 ('Phase'). "
+        "Returns a dictionary mapping element IDs to dictionaries, where the inner dictionary maps attribute numbers to their values. "
+        "Values can be strings, numbers, or potentially null/error markers if not set or retrieval fails."
+    )
+)
+async def get_user_attributes(element_ids: List[int], attribute_numbers: List[int]) -> dict:
+    """Retrieves specific user attributes for a list of elements via the socket plug-in."""
+    logger.info(f"Tool 'get_user_attributes' called for {len(element_ids)} elements and attributes {attribute_numbers}.")
+    response = {"status": "error", "message": "Unknown error"}
+
+    try:
+        # --- Input Validation ---
+        if not isinstance(element_ids, list):
+             raise ValueError("element_ids must be a list.")
+        if not all(isinstance(eid, int) and eid >= 0 for eid in element_ids):
+             raise ValueError("All element_ids must be non-negative integers.")
+        if not isinstance(attribute_numbers, list):
+             raise ValueError("attribute_numbers must be a list.")
+        if not all(isinstance(num, int) and num > 0 for num in attribute_numbers):
+             raise ValueError("All attribute_numbers must be positive integers.")
+        # --- End Input Validation ---
+
+        if not element_ids or not attribute_numbers:
+             logger.info("Received empty element_ids or attribute_numbers list. Returning empty success response.")
+             # Return structure should still match success case for consistency
+             return {"status": "ok", "user_attributes_by_id": {}}
+
+        connection = get_cadwork_connection()
+        args = {"element_ids": element_ids, "attribute_numbers": attribute_numbers}
+        logger.info(f"Attempting to send 'get_user_attributes' command with args: {args}")
+        plugin_response = connection.send_command("get_user_attributes", args)
+
+        # Log success or error based on bridge response
+        if plugin_response.get("status") == "ok":
+            count = len(plugin_response.get("user_attributes_by_id", {}))
+            logger.info(f"User attributes retrieved successfully for {count} elements.")
+        else:
+            error_msg = plugin_response.get("message", "Plug-in returned an error status.")
+            logger.error(f"Plug-in reported error for get_user_attributes: {error_msg}")
+        response = plugin_response # Return raw bridge response
+
+    except ValueError as ve:
+        logger.error(f"Input validation error in get_user_attributes: {ve}")
+        response["message"] = str(ve)
+    except ConnectionError as e:
+        logger.error(f"Connection error in get_user_attributes: {e}")
+        response["message"] = f"Failed to connect to Cadwork plug-in: {e}"
+    except TimeoutError as e:
+        logger.error(f"Timeout error in get_user_attributes: {e}")
+        response["message"] = f"Timeout communicating with Cadwork plug-in: {e}"
+    except Exception as e:
+        logger.error(f"Unexpected error in get_user_attributes: {e}", exc_info=True)
+        response["message"] = f"An unexpected server error occurred: {e}"
+
+    return response
+
+
+@mcp.tool(
+    name="list_defined_user_attributes",
+    description=(
+        "Retrieves a list of all user-defined attribute numbers that have a name configured in the current Cadwork environment. "
+        "This helps identify which user attribute numbers (e.g., 1-100) are actually in use and what they represent (e.g., 10='CostCode'). "
+        "This tool does not require element IDs as input. "
+        "Example Use Case: Find out which user attributes are available for filtering or querying before calling 'get_user_attributes'. "
+        "Returns a dictionary mapping the integer user attribute numbers to their configured string names."
+    )
+)
+async def list_defined_user_attributes() -> dict:
+    """Retrieves the names of defined user attributes via the socket plug-in."""
+    logger.info("Tool 'list_defined_user_attributes' called.")
+    response = {"status": "error", "message": "Unknown error"}
+
+    try:
+        connection = get_cadwork_connection()
+        logger.info("Attempting to send 'list_defined_user_attributes' command.")
+        plugin_response = connection.send_command("list_defined_user_attributes", {})
+
+        # Log success or error based on bridge response
+        if plugin_response.get("status") == "ok":
+            count = len(plugin_response.get("defined_attributes", {}))
+            logger.info(f"Defined user attributes listed successfully ({count} found).")
+        else:
+            error_msg = plugin_response.get("message", "Plug-in returned an error status.")
+            logger.error(f"Plug-in reported error for list_defined_user_attributes: {error_msg}")
+        response = plugin_response # Return raw bridge response
+
+    except ConnectionError as e:
+        logger.error(f"Connection error in list_defined_user_attributes: {e}")
+        response["message"] = f"Failed to connect to Cadwork plug-in: {e}"
+    except TimeoutError as e:
+        logger.error(f"Timeout error in list_defined_user_attributes: {e}")
+        response["message"] = f"Timeout communicating with Cadwork plug-in: {e}"
+    except Exception as e:
+        logger.error(f"Unexpected error in list_defined_user_attributes: {e}", exc_info=True)
+        response["message"] = f"An unexpected server error occurred: {e}"
+
+    return response
+
 
 if __name__ == "__main__":
     # When running with stdio, mcp.run often handles the event loop.

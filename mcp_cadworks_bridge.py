@@ -7,6 +7,7 @@ import utility_controller as uc
 import element_controller as ec
 import geometry_controller as gc
 import attribute_controller as ac
+import material_controller as mc
 import cadwork             
 HOST, PORT = "127.0.0.1", 53002          # keep your chosen port
 
@@ -53,7 +54,7 @@ def handle(msg: dict) -> dict:
             # --- Attempt to get Cadwork version ---
             cw_version_str = str(uc.get_3d_version())  # Correct API call per docs
             print(f"Successfully retrieved Cadwork version: {cw_version_str}")
-            return {"status": "ok", "cw_version": cw_version_str, "plugin_version": "0.1.0_logged"}
+            return {"status": "ok", "cw_version": cw_version_str, "plugin_version": "0.1.1_attr"}
         except AttributeError:
             print("Error: utility_controller has no 'get_3d_version'")
             return {"status": "error", "message": "Failed to get version info: Function not found in utility_controller"}
@@ -141,7 +142,6 @@ def handle(msg: dict) -> dict:
             print(f"Retrieving info for element ID: {element_id}")
 
             # Retrieve geometric information
-            # Note: These might raise errors if the element ID is invalid or not applicable type
             p1 = gc.get_p1(element_id)
             p2 = gc.get_p2(element_id)
             p3 = gc.get_p3(element_id)
@@ -149,20 +149,46 @@ def handle(msg: dict) -> dict:
             vec_y = gc.get_yl(element_id)
             vec_z = gc.get_zl(element_id)
 
-            # Basic type check (example - needs actual API function if available)
-            # element_type = "unknown"
-            # try:
-            #     if ac.is_beam(element_id): # Assuming ac.is_beam exists
-            #         element_type = "beam"
-            #     elif ac.is_panel(element_id): # ac.is_panel exists
-            #          element_type = "panel"
-            # except AttributeError:
-            #      print("AttributeController does not have is_beam/is_panel yet.")
-            # For now, we'll just return the geometry
+            # Retrieve attributes with individual error handling
+            attributes = {}
+            # Standard attributes to fetch for this tool
+            standard_attrs_to_get = {
+                "name": ac.get_name,
+                "group": ac.get_group,
+                "subgroup": ac.get_subgroup,
+                "comment": ac.get_comment
+                # Add others here if needed by this specific tool
+            }
+            for attr_name, getter_func in standard_attrs_to_get.items():
+                try:
+                    value = getter_func(element_id)
+                    attributes[attr_name] = value
+                    print(f"  - Retrieved {attr_name}: {value}")
+                except Exception as e:
+                    print(f"  - Warning: Could not get {attr_name} for element {element_id}: {e}")
+                    attributes[attr_name] = None # Indicate failure to retrieve
 
+            # Get Material (special handling)
+            try:
+                material_id = ac.get_material(element_id) # Assumed function
+                if material_id is not None and material_id > 0: # Check for valid ID
+                    material_name = mc.get_name(material_id)
+                    attributes['material'] = material_name
+                    print(f"  - Retrieved material: {material_name} (ID: {material_id})")
+                else:
+                    print(f"  - Element {element_id} has no material assigned (ID: {material_id})")
+                    attributes['material'] = None
+            except AttributeError:
+                 print(f"  - Warning: Function ac.get_material or mc.get_name not found.")
+                 attributes['material'] = "Error: Function not available" # Specific error message
+            except Exception as e:
+                print(f"  - Warning: Could not get material for element {element_id}: {e}")
+                attributes['material'] = None # Indicate failure to retrieve
+
+
+            # Construct the full info dictionary
             element_info = {
                 "element_id": element_id,
-                # "type": element_type, # Add later if type detection is feasible
                 "geometry": {
                     "p1": pt_to_list(p1),
                     "p2": pt_to_list(p2),
@@ -171,18 +197,19 @@ def handle(msg: dict) -> dict:
                     "vector_y": pt_to_list(vec_y),
                     "vector_z": pt_to_list(vec_z),
                 },
-                # "attributes": {} # Placeholder for future attribute retrieval
+                "attributes": attributes # Include fetched attributes
             }
-            print(f"Successfully retrieved info for element {element_id}")
+            print(f"Successfully retrieved info for element {element_id}: {element_info}")
             return {"status": "ok", "info": element_info}
 
         except (ValueError, TypeError) as e:
              print(f"Input Error in get_element_info: {e}")
              return {"status": "error", "message": f"Invalid input for get_element_info: {e}"}
-        except Exception as e: # Catch Cadwork API errors (e.g., invalid ID)
+        except Exception as e: # Catch Cadwork API errors (e.g., invalid ID for geometry)
             print(f"Cadwork API Error in get_element_info for ID {args.get('element_id')}: {e}")
-            # Check if the error suggests the element ID doesn't exist
-            if "element not found" in str(e).lower() or "invalid element id" in str(e).lower():
+            # More robust check for invalid ID errors across different Cadwork versions/contexts
+            err_str = str(e).lower()
+            if "element not found" in err_str or "invalid element id" in err_str or "elementid not valid" in err_str:
                  return {"status": "error", "message": f"Element ID {args.get('element_id')} not found or invalid."}
             traceback.print_exc()
             return {"status": "error", "message": f"Cadwork API error: {type(e).__name__} - {e}"}
@@ -203,6 +230,144 @@ def handle(msg: dict) -> dict:
             traceback.print_exc()
             # Ensure the key is "message" for the error response
             return {"status": "error", "message": f"Failed to get active element IDs: {e}"}
+
+    # --- NEW TOOL HANDLERS --- === START === --- === === === === === === ===
+
+    if op == "get_standard_attributes":
+        try:
+            print(f"Handling 'get_standard_attributes' with args: {args}")
+            element_ids_arg = args.get("element_ids")
+            if not isinstance(element_ids_arg, list):
+                raise ValueError("'element_ids' must be a list.")
+
+            element_ids = [int(eid) for eid in element_ids_arg] # Validate elements are ints
+            results = {}
+            # Define which standard attributes to get and their corresponding functions
+            standard_attrs_map = {
+                "name": ac.get_name,
+                "group": ac.get_group,
+                "subgroup": ac.get_subgroup,
+                "comment": ac.get_comment
+            }
+
+            print(f"Processing {len(element_ids)} elements for standard attributes...")
+            for eid in element_ids:
+                print(f"  Processing element ID: {eid}")
+                elem_attrs = {}
+                # Get standard named attributes
+                for attr_key, getter_func in standard_attrs_map.items():
+                    try:
+                        value = getter_func(eid)
+                        elem_attrs[attr_key] = value
+                        # print(f"    - Got {attr_key}: {value}") # Verbose log
+                    except Exception as e:
+                        print(f"    - ERROR getting {attr_key} for element {eid}: {e}")
+                        elem_attrs[attr_key] = f"ERROR: {type(e).__name__}" # Store error marker
+
+                # Get Material (Corrected approach)
+                try:
+                    material_name = ac.get_element_material_name(eid)
+                    elem_attrs['material'] = material_name if material_name else None # Store None if empty name returned
+                    # print(f"    - Got material: {material_name}") # Verbose log
+                except AttributeError as ae:
+                    print(f"    - ERROR getting material name for element {eid}: Function not found ({ae})")
+                    elem_attrs['material'] = "ERROR: FunctionNotFound"
+                except Exception as e:
+                    print(f"    - ERROR getting material name for element {eid}: {e}")
+                    elem_attrs['material'] = f"ERROR: {type(e).__name__}"
+
+                results[eid] = elem_attrs # Store attributes for this element ID (using int key)
+
+            print("Finished processing standard attributes.")
+            return {"status": "ok", "attributes_by_id": results}
+
+        except (ValueError, TypeError) as e:
+             print(f"Input Error in get_standard_attributes: {e}")
+             return {"status": "error", "message": f"Invalid input for get_standard_attributes: {e}"}
+        except Exception as e:
+            print(f"Cadwork API Error in get_standard_attributes: {e}")
+            traceback.print_exc()
+            return {"status": "error", "message": f"Cadwork API error in get_standard_attributes: {type(e).__name__} - {e}"}
+
+    if op == "get_user_attributes":
+        try:
+            print(f"Handling 'get_user_attributes' with args: {args}")
+            element_ids_arg = args.get("element_ids")
+            attr_numbers_arg = args.get("attribute_numbers")
+
+            if not isinstance(element_ids_arg, list):
+                raise ValueError("'element_ids' must be a list.")
+            if not isinstance(attr_numbers_arg, list):
+                raise ValueError("'attribute_numbers' must be a list.")
+
+            element_ids = [int(eid) for eid in element_ids_arg]
+            attribute_numbers = [int(num) for num in attr_numbers_arg]
+            if not all(num > 0 for num in attribute_numbers):
+                raise ValueError("Attribute numbers must be positive integers.")
+
+            results = {}
+            print(f"Processing {len(element_ids)} elements for user attributes {attribute_numbers}...")
+            for eid in element_ids:
+                print(f"  Processing element ID: {eid}")
+                user_attrs = {}
+                for num in attribute_numbers:
+                    try:
+                        value = ac.get_user_attribute(eid, num)
+                        user_attrs[num] = value # Store with int key for number
+                        # print(f"    - Got user attr {num}: {value}") # Verbose log
+                    except Exception as e:
+                         print(f"    - ERROR getting user attribute {num} for element {eid}: {e}")
+                         user_attrs[num] = f"ERROR: {type(e).__name__}" # Store error marker
+                results[eid] = user_attrs # Store with int key for element ID
+
+            print("Finished processing user attributes.")
+            return {"status": "ok", "user_attributes_by_id": results}
+
+        except (ValueError, TypeError) as e:
+             print(f"Input Error in get_user_attributes: {e}")
+             return {"status": "error", "message": f"Invalid input for get_user_attributes: {e}"}
+        except Exception as e:
+            print(f"Cadwork API Error in get_user_attributes: {e}")
+            traceback.print_exc()
+            return {"status": "error", "message": f"Cadwork API error in get_user_attributes: {type(e).__name__} - {e}"}
+
+    if op == "list_defined_user_attributes":
+        try:
+            print(f"Handling 'list_defined_user_attributes' with args: {args}")
+            defined_attributes = {}
+            # Loop through a reasonable range, e.g., 1 to 100
+            max_check_number = 100
+            print(f"Checking user attribute numbers 1 to {max_check_number} for defined names...")
+            for i in range(1, max_check_number + 1):
+                try:
+                    name = ac.get_user_attribute_name(i)
+                    # Only add if the name is not None and not an empty string
+                    if name:
+                        print(f"  - Found definition for {i}: '{name}'")
+                        defined_attributes[i] = name # Store with int key
+                    # else: # Verbose log
+                    #     print(f"  - Attribute {i} is not defined (name: {name})")
+                except AttributeError as ae:
+                    # This likely means the function itself is missing
+                    print(f"ERROR: Function ac.get_user_attribute_name not found. Cannot list definitions. ({ae})")
+                    raise # Re-raise to be caught by the outer handler
+                except Exception as e:
+                    # Log error for this specific number but continue checking others
+                    print(f"  - Error checking attribute {i}: {e} - Skipping this number.")
+
+            print(f"Finished listing defined user attributes ({len(defined_attributes)} found).")
+            return {"status": "ok", "defined_attributes": defined_attributes}
+
+        except AttributeError as ae:
+             # Handle the case where the function doesn't exist at all
+             print(f"Input Error in list_defined_user_attributes: {ae}")
+             return {"status": "error", "message": f"Function ac.get_user_attribute_name not available in this Cadwork version.", "details": str(ae)}
+        except Exception as e:
+            print(f"Cadwork API Error in list_defined_user_attributes: {e}")
+            traceback.print_exc()
+            return {"status": "error", "message": f"Cadwork API error in list_defined_user_attributes: {type(e).__name__} - {e}"}
+
+    # --- NEW TOOL HANDLERS --- === END === === === === === === === === ===
 
     # Fallback for unknown operations
     print(f"Unknown operation received: {op}")
@@ -419,7 +584,7 @@ def main():
         print("Port check successful, no other instance detected.")
         can_start = True
     except OSError as e:
-         if "already in use" in str(e).lower() or e.winerror == 10048: # winerror 10048 is WSAEADDRINUSE
+         if "already in use" in str(e).lower() or (hasattr(e, 'winerror') and e.winerror == 10048): # winerror 10048 is WSAEADDRINUSE
               print(f"!!! Port {PORT} is already in use. Is another instance of cadwork_mcp.py running? !!!")
               print("!!! If previous run crashed, you might need to wait or manually free the port. !!!")
               can_start = False
@@ -442,32 +607,8 @@ def main():
     server_thread.start()
     print("cadwork_mcp main() finished, server thread running in background.")
 
-    # --- Keep Main Thread Alive (Optional but good for clean shutdown) ---
-    # This part allows Ctrl+C to be caught gracefully if running interactively
-    # If run purely as a Cadwork plugin without interactive console, it might not be needed
-    # import signal
-    # signal.signal(signal.SIGINT, signal_handler) # Catch Ctrl+C
-    # signal.signal(signal.SIGTERM, signal_handler) # Catch termination signals
-
-    # print("Main thread running. Press Ctrl+C to attempt graceful shutdown.")
-    # try:
-    #      # Keep main thread alive while server thread runs
-    #      while server_thread.is_alive():
-    #           server_thread.join(timeout=1.0) # Check every second
-    #           if shutdown_event.is_set():
-    #                print("Shutdown signal received in main loop.")
-    #                break
-    # except KeyboardInterrupt:
-    #      print("\nCtrl+C detected in main thread.")
-    #      shutdown_event.set()
-
-    # print("Main thread exiting.")
-    # If server_thread is daemon, it will exit when main thread exits.
-    # If not daemon, ensure it stops cleanly here if needed.
-
 
 if __name__ == "__main__":
     print(f"\n--- Running cadwork_mcp.py ({__name__} namespace) ---")
     main()
-    # The print below might appear *before* the server thread fully stops if main exits quickly
     print("--- cadwork_mcp.py script execution context finished ---")

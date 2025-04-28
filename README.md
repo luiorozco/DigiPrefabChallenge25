@@ -131,6 +131,18 @@ The MCP server includes several tools for interacting with Cadwork. Below are so
 
 This project is an MVP and welcomes contributions to improve its functionality and usability. Feel free to fork the repository and submit pull requests.
 
+## Authors
+
+- **Client:** Lui Orozco
+- **Tutor:** Lasath Siriwardena
+- **Technical Support:** Rainer Abt
+
+**Team:**
+- Sasipa Vichitkraivin
+- Max Maier
+- Samuel Slezak
+- Hyo Wook Kim
+
 ## Acknowledgments
 
 Special thanks to the organizers, mentors, and participants of the IntCDC Hackathon Digital Prefabrication Challenge 2025 for their support and collaboration.

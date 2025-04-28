@@ -1,13 +1,85 @@
 # DigiPrefabChallenge25
 
+## Demo Videos
+
+Watch these videos to see the Cadwork MCP server in action:
+
+<table>
+  <tr>
+    <td><a href="https://github.com/user-attachments/assets/d1e8f0a1-c3b1-4e9a-8a0f-1a2b3c4d5e6f" target="_blank">Example 1: Texting with Data</a></td>
+    <td><a href="https://github.com/user-attachments/assets/a1b2c3d4-e5f6-7890-1234-567890abcdef" target="_blank">Example 2: Multilingual Texting</a></td>
+  </tr>
+  <tr>
+    <td><a href="https://github.com/user-attachments/assets/f0e9d8c7-b6a5-4321-fedc-ba9876543210" target="_blank">Example 3: Identifying Trucks</a></td>
+    <td><a href="https://github.com/user-attachments/assets/01234567-89ab-cdef-0123-456789abcdef" target="_blank">Example 4: Finding Materials</a></td>
+  </tr>
+</table>
+
+
 ## Overview
 
-The **cadworkMCP** project is an MVP (Minimum Viable Product) developed during the **IntCDC Hackathon Digital Prefabrication Challenge 2025**. This project aims to create an MCP (Model Context Protocol) server for Cadwork, enabling users to establish an interactive interface where hosts like Claude or Cursor can chat with a BIM (Building Information Modeling) model inside Cadwork. The solution was developed in response to a challenge presented by Egoin, a timber construction company.
+The **cadworkMCP** project is an MVP (Minimum Viable Product) developed during the **IntCDC Hackathon Digital Prefabrication Challenge 2025** (April 25–27, 2025). It creates a Model Context Protocol (MCP) server for Cadwork, enabling AI hosts like Claude or Cursor to interact conversationally with a BIM model inside a running Cadwork instance. This allows users to retrieve and manipulate model data programmatically, enhancing workflows in digital prefabrication and timber construction. The solution was developed in response to a challenge presented by Egoin, a timber construction company.
 
-This project allows users to:
-- Interact with BIM models in Cadwork through a conversational interface.
-- Retrieve and manipulate model data programmatically.
-- Enhance workflows in digital prefabrication and timber construction.
+## How it Works
+
+The system consists of two main parts:
+1.  **Cadwork Bridge (`mcp_cadworks_bridge.py`):** A Python script running *inside* Cadwork via its API plug-in. It listens on a local socket for commands.
+2.  **MCP Server (`mcp_server.py`):** An external Python server (using FastAPI via `mcp.server.fastmcp`) that exposes MCP tools. When an AI host calls a tool, this server translates the request and sends it to the Cadwork Bridge via the socket connection.
+
+This separation keeps Cadwork-specific logic within the Cadwork environment while providing a standard MCP interface for external agents.
+
+## Getting Started
+
+### Prerequisites
+
+1.  **Python**: Version 3.8 or later. ([python.org](https://www.python.org/))
+2.  **Cadwork**: A running instance of Cadwork with its Python API plug-in enabled and the `mcp_cadworks_bridge.py` script running within it (see `INSTRUCTIONS.md` for setup).
+3.  **Virtual Environment**: Recommended for managing dependencies.
+
+### Setup
+
+1.  Clone the repository.
+2.  Open a terminal in the project directory.
+3.  Create and activate a virtual environment:
+    ```bash
+    # Windows
+    python -m venv venv
+    .\venv\Scripts\activate
+    # macOS/Linux
+    python3 -m venv venv
+    source venv/bin/activate
+    ```
+4.  Install dependencies:
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+### Running the MCP Server
+
+The MCP server needs to be running for an AI host to connect to it.
+
+1.  Ensure the Cadwork Bridge (`mcp_cadworks_bridge.py`) is running inside Cadwork and listening on the configured port (default: 53002).
+2.  Run the MCP server from your terminal (ensure the virtual environment is active):
+    ```bash
+    python mcp_server.py
+    ```
+    This typically starts the server in stdio mode, suitable for direct integration with tools like Cursor configured via `.cursor/mcp.json`. If you need an HTTP server, you might need to adjust the run command or the server configuration (refer to `mcp_server.py` and `mcp.server` documentation).
+
+### Connecting an AI Host (e.g., Cursor)
+
+The primary way to use this project is through an AI-powered code editor or chat interface that supports MCP.
+
+1.  **Configure your Host:** Set up your AI host (like Cursor) to connect to the running MCP server. This project includes a sample configuration in `.cursor/mcp.json`. You may need to adjust paths and ports according to your setup.
+2.  **Interact:** Once connected, you can ask the AI host to perform actions using the available tools, such as:
+    *   `get_cadwork_version_info`: Get version details.
+    *   `create_beam`: Create a new beam element.
+    *   `get_element_info`: Retrieve geometry and attributes for an element.
+    *   `get_active_element_ids`: Get IDs of selected elements.
+    *   `get_standard_attributes`: Get common attributes (name, group, material, etc.).
+    *   `get_user_attributes`: Get specific user-defined attributes.
+    *   `list_defined_user_attributes`: List available user attributes.
+
+The AI host will call the corresponding tools on the MCP server, which communicates with Cadwork to execute the actions or retrieve the requested information.
 
 ## Hackathon Context
 
@@ -19,37 +91,6 @@ The project was developed as part of a hackathon held from April 25–27, 2025, 
 - **BIM Model Interaction**: Retrieve, modify, and query BIM model data programmatically.
 - **Custom Tools**: Includes tools for creating beams, retrieving element information, and managing attributes.
 
-## Getting Started
-
-### Prerequisites
-
-To run this project, you need the following:
-
-1. **Python**: Ensure Python 3.8 or later is installed. You can download it from [python.org](https://www.python.org/).
-2. **Virtual Environment**: It is recommended to use a virtual environment to manage dependencies.
-3. **Cadwork**: A running instance of Cadwork with its Python API plug-in enabled.
-
-### Setting Up a Virtual Environment
-
-1. Open a terminal and navigate to the project directory.
-2. Create a virtual environment:
-   ```bash
-   python3 -m venv venv
-   ```
-3. Activate the virtual environment:
-   - On Linux/Mac:
-     ```bash
-     source venv/bin/activate
-     ```
-   - On Windows:
-     ```bash
-     venv\Scripts\activate
-     ```
-4. Install the required dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
 ## Important Requirements
 
 - **Python Version:** You must use Python 3.10 or higher for the MCP server to work correctly. Check your version with:
@@ -57,52 +98,6 @@ To run this project, you need the following:
   python3 --version
   ```
   If you have an older version, download and install the latest Python from [python.org](https://www.python.org/downloads/).
-
-## How to Run the MCP Server for Claude or Cursor
-
-### 1. Start the Cadwork MCP Bridge
-- In Cadwork, ensure the MCP plug-in is installed and running (see deployment steps above).
-- Start the bridge script (e.g., `mcp_cadworks_bridge.py`) inside Cadwork's Python environment if required.
-
-### 2. Start the MCP Server
-- In your Linux terminal, activate your virtual environment:
-  ```bash
-  source venv/bin/activate
-  ```
-- Run the MCP server:
-  ```bash
-  python mcp_server.py
-  ```
-  The server will listen on `127.0.0.1:53002` by default. You can override the port by setting the `CW_PORT` environment variable.
-
-### 3. Connect with Cursor
-- Add the MCP server to your `~/.cursor-config.json` file:
-  ```json
-  {
-    "mcp_servers": [
-      {
-        "name": "CadworkMCP",
-        "host": "127.0.0.1",
-        "port": 53002
-      }
-    ]
-  }
-  ```
-- In Cursor, select the CadworkMCP agent and start chatting with your BIM model.
-
-### 4. Connect with Claude
-- If using Claude, follow the integration instructions provided by your Claude platform or see their documentation for connecting to a local MCP server.
-- Claude and Cursor both use the Model Context Protocol (MCP) to interact with your server.
-
-### 5. Troubleshooting
-- If you see connection errors, ensure:
-  - Cadwork is running and the plug-in is active.
-  - The MCP server is running and listening on the correct port.
-  - Your Python version is 3.10 or higher.
-
-For more details, see:
-- [Cursor Model Context Protocol Documentation](https://docs.cursor.so/ai-agents/model-context-protocol)
-- [Anthropic Claude MCP Integration](https://docs.anthropic.com/claude/docs/using-claude-with-mcp)
 
 ## Tools and Usage
 
@@ -255,15 +250,3 @@ To make your Cadwork MCP server discoverable by Cursor, you may need to create a
 - Place this file at `/workspaces/DigiPrefabChallenge25/.cursor/mcp.json` or in your home directory at `~/.cursor/mcp.json`.
 - Adjust the `host` and `port` if you are running the server on a different machine or port.
 - This will allow Cursor to automatically detect and list your Cadwork MCP server as an available agent.
-
-## Demo Videos
-
-Below are short demo videos showing the Cadwork MCP in action:
-
-[![Identifying Trucks (Video 3)](docs/img/demo_thumbnail.png)](videos/Example_3_identifyingTrucks.mp4)
-*Identifying trucks in the BIM model (click to watch)*
-
-[![Finding Materials (Video 4)](docs/img/demo_thumbnail.png)](videos/Example_4_findingMaterials.mp4)
-*Finding materials in the BIM model (click to watch)*
-
-> **Note:** GitHub does not support inline video playback in README files. Clicking the image will download or play the video in your browser, depending on your browser settings.

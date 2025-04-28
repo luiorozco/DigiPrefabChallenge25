@@ -172,3 +172,16 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+pyproject.toml
+uv.lock
+.python-version
+*.xls
+*.xlsx
+*.xlsm
+*.xlsb
+*.xlsm
+*.xlsb
+*.xlsm
+*.xlsb
+
+bim_timber_clean.json

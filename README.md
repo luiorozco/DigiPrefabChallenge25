@@ -1,22 +1,53 @@
-# DigiPrefabChallenge25
+<div align="center">
+  <img src="Icon.png" alt="cadwork MCP Icon" width="120"/>
+  <h1 style="margin: 0;">cadworkMCP</h1>
+</div>
+
+<p align="center">
+  <a href="https://www.python.org/downloads/release/python-3100/"><img src="https://img.shields.io/badge/python-3.10%2B-blue.svg" alt="Python 3.10+"/></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License: MIT"/></a>
+</p>
+
+## Table of Contents
+- [Table of Contents](#table-of-contents)
+- [Demo Videos](#demo-videos)
+- [Overview](#overview)
+- [Architecture](#architecture)
+- [Getting Started](#getting-started)
+  - [Prerequisites](#prerequisites)
+  - [Important Requirements](#important-requirements)
+  - [Setup and Usage](#setup-and-usage)
+- [Features and Tools](#features-and-tools)
+- [How to Add a New Tool to cadworkMCP](#how-to-add-a-new-tool-to-cadworkmcp)
+  - [Example: Adding a Tool to Set a User Attribute](#example-adding-a-tool-to-set-a-user-attribute)
+    - [1. Update `mcp_cadworks_bridge.py`](#1-update-mcp_cadworks_bridgepy)
+    - [2. Update `mcp_server.py`](#2-update-mcp_serverpy)
+    - [3. Test Your Tool](#3-test-your-tool)
+- [Retrieval-Augmented Generation (RAG) Integration](#retrieval-augmented-generation-rag-integration)
+- [Hackathon Context](#hackathon-context)
+- [Contribution](#contribution)
+- [Authors](#authors)
+- [Acknowledgments](#acknowledgments)
+- [License](#license)
+- [Tool Reference](#tool-reference)
 
 ## Demo Videos
 
-Watch these videos to see the Cadwork MCP server in action:
+Watch these videos to see the cadwork MCP server in action:
 
 <table>
   <tr>
-    <td>Example 3: Identifying Trucks<br><img src="videos/Example_3_identifyingTrucks-ezgif.com-video-to-gif-converter.gif" alt="Example 3: Identifying Trucks"></td>
+    <td>Identifying Trucks<br><img src="videos/Example_3_identifyingTrucks-ezgif.com-video-to-gif-converter.gif" alt="Example 3: Identifying Trucks"></td>
   </tr>
   <tr>
-    <td>Example 4: Finding Materials<br><img src="videos/Example_4_findingMaterials-ezgif.com-video-to-gif-converter.gif" alt="Example 4: Finding Materials"></td>
+    <td>Finding Materials<br><img src="videos/Example_4_findingMaterials-ezgif.com-video-to-gif-converter.gif" alt="Example 4: Finding Materials"></td>
   </tr>
 </table>
 
 
 ## Overview
 
-The **cadworkMCP** project is an MVP (Minimum Viable Product) developed during the **IntCDC Hackathon Digital Prefabrication Challenge 2025** (April 25–27, 2025). It creates a Model Context Protocol (MCP) server for Cadwork, enabling AI hosts like Claude or Cursor to interact conversationally with a BIM model inside a running Cadwork instance. This allows users to retrieve and manipulate model data programmatically, enhancing workflows in digital prefabrication and timber construction. The solution was developed in response to a challenge presented by Egoin, a timber construction company.
+The **cadworkMCP** project is an MVP (Minimum Viable Product) developed during the [**Hackathon Digital Prefabrication Challenge 2025**](https://www.intcdc.uni-stuttgart.de/news-events/events/detail/Hackathon-Digital-Prefabrication-Challenge-00001/)  (April 25–27, 2025). It creates a Model Context Protocol (MCP) server for Cadwork, enabling AI hosts like Claude or Cursor to interact conversationally with a BIM model inside a running Cadwork instance. This allows users to retrieve and manipulate model data programmatically, enhancing workflows in digital prefabrication and timber construction. The solution was developed in response to a challenge presented by Egoin, a timber construction company.
 
 ## Architecture
 
@@ -52,7 +83,7 @@ This separation keeps Cadwork-specific logic within the Cadwork environment whil
     cd DigiPrefabChallenge25
     ```
 2.  **Set up Cadwork Bridge:**
-    *   Run the `mcp_cadworks_bridge.py` script within Cadwork (e.g., via the Python IDLE plugin). Verify it shows “listening…” in the socket message.
+    *   Run the `mcp_cadworks_bridge.py` script within Cadwork (e.g., via the Python IDLE plugin). Verify it shows "listening…" in the socket message.
 3.  **Set up MCP Server:**
     *   Open a terminal in the project directory.
     *   Create and activate a virtual environment:
@@ -116,6 +147,53 @@ This separation keeps Cadwork-specific logic within the Cadwork environment whil
     *   `get_user_attributes`: Get specific user-defined attributes for an element ID.
     *   `list_defined_user_attributes`: List all user-defined attributes configured in the current Cadwork environment.
 
+## How to Add a New Tool to cadworkMCP
+
+You can extend cadworkMCP by adding new tools that expose Cadwork API functionality to external agents. This is done by:
+
+1. **Identifying the Cadwork API function you want to expose** (see the [Cadwork Python API docs](https://docs.cadwork.com/projects/cwapi3dpython/en/latest/)).
+2. **Adding a handler in `mcp_cadworks_bridge.py`** that calls the relevant Cadwork API/controller function.
+3. **Registering a new tool in `mcp_server.py`** that sends the operation to the bridge and returns the result.
+
+### Example: Adding a Tool to Set a User Attribute
+
+Suppose you want to add a tool to set a user attribute on elements using the [attribute_controller](https://docs.cadwork.com/projects/cwapi3dpython/en/latest/documentation/attribute_controller/):
+
+#### 1. Update `mcp_cadworks_bridge.py`
+- Add a new operation in the `handle` function:
+
+```python
+if op == "set_user_attribute":
+    try:
+        element_ids = args["element_id_list"]
+        number = args["number"]
+        value = args["user_attribute"]
+        ac.set_user_attribute(element_ids, number, value)
+        return {"status": "ok"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+```
+
+#### 2. Update `mcp_server.py`
+- Register a new tool:
+
+```python
+@mcp.tool(
+    name="set_user_attribute",
+    description="Sets a user attribute value for a list of element IDs. Args: element_id_list (list of int), number (int), user_attribute (str)."
+)
+async def set_user_attribute(element_id_list: list, number: int, user_attribute: str) -> dict:
+    connection = get_cadwork_connection()
+    args = {"element_id_list": element_id_list, "number": number, "user_attribute": user_attribute}
+    return connection.send_command("set_user_attribute", args)
+```
+
+#### 3. Test Your Tool
+- Restart both the Cadwork bridge and the MCP server.
+- Call your new tool from your AI host or via HTTP.
+
+**Tip:** Refer to the [Cadwork Python API documentation](https://docs.cadwork.com/projects/cwapi3dpython/en/latest/) and the [attribute_controller reference](https://docs.cadwork.com/projects/cwapi3dpython/en/latest/documentation/attribute_controller/) for available functions and their signatures.
+
 ## Retrieval-Augmented Generation (RAG) Integration
 
 This project includes an optional RAG (Retrieval-Augmented Generation) component for enhanced BIM data interaction using natural language.
@@ -123,7 +201,8 @@ This project includes an optional RAG (Retrieval-Augmented Generation) component
 
 ## Hackathon Context
 
-This project was developed as part of the **IntCDC Hackathon Digital Prefabrication Challenge 2025** (April 25–27, 2025), organized by the Cluster of Excellence IntCDC and the University of British Columbia. The hackathon focused on digital prefabrication in timber construction, with participation from companies like Blumer Lehmann, Renggli, Strong by Form, Egoin, and others.
+This project was developed as part of the [**Hackathon Digital Prefabrication Challenge 2025**](https://www.intcdc.uni-stuttgart.de/news-events/events/detail/Hackathon-Digital-Prefabrication-Challenge-00001/) (April 25–27, 2025), organized by the [Cluster of Excellence IntCDC](https://www.intcdc.uni-stuttgart.de/), [digitize wood](https://www.digitize-wood.de/en-us)
+and the University of British Columbia. The hackathon focused on digital prefabrication in timber construction, with participation from companies like Blumer Lehmann, Renggli, Strong by Form, Egoin, and others.
 
 ## Contribution
 
@@ -131,9 +210,9 @@ This project is an MVP and welcomes contributions. Feel free to fork the reposit
 
 ## Authors
 
-- **Client:** Lui Orozco
-- **Tutor:** Lasath Siriwardena
-- **Technical Support:** Rainer Abt
+- **Client:** Lui Orozco ([Egoin](https://egoin.com/en/))
+- **Tutor:** Lasath Siriwardena ([Institute for Computational Design and Construction - ICD](https://www.icd.uni-stuttgart.de/team/siriwardena))
+- **Technical Support:** Rainer Abt ([cadwork](https://cadwork.de/))
 
 **Team:**
 - Sasipa Vichitkraivin
@@ -149,4 +228,14 @@ Special thanks to the organizers, mentors, and participants of the IntCDC Hackat
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
+## Tool Reference
 
+| Tool Name                  | Arguments                                 | Returns         | Description                                  |
+|---------------------------|-------------------------------------------|-----------------|----------------------------------------------|
+| get_cadwork_version_info  | None                                      | Dict            | Get Cadwork and plugin version info          |
+| create_beam               | p1, p2, width, height, [p3]               | Dict (id)       | Create a new beam in the model               |
+| get_element_info          | element_id                                | Dict            | Get geometry and attributes for an element   |
+| get_active_element_ids    | None                                      | Dict (element_ids) | Get IDs of currently selected elements   |
+| get_standard_attributes   | element_ids (list)                        | Dict            | Get standard attributes for elements         |
+| get_user_attributes       | element_ids (list), attribute_numbers (list) | Dict         | Get user-defined attributes for elements     |
+| list_defined_user_attributes | None                                   | Dict            | List all user-defined attributes             |

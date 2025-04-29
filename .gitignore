@@ -185,3 +185,13 @@ uv.lock
 *.xlsb
 
 bim_timber_clean.json
+rag_db
+/docs
+.github
+bim.duckdb
+client_test.py
+DigiPrefabChallenge25.py
+Logistics_profile.txt
+TruckDriver.txt
+test_client.py
+rag_bim.py

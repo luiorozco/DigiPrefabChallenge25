@@ -37,10 +37,10 @@ Watch these videos to see the cadwork MCP server in action:
 
 <table>
   <tr>
-    <td>Identifying Trucks<br><img src="videos/Example_3_identifyingTrucks-ezgif.com-video-to-gif-converter.gif" alt="Example 3: Identifying Trucks"></td>
+    <td>Identifying Trucks<br><img src="videos/Example_3_identifyingTrucks.webp" alt="Example 3: Identifying Trucks"></td>
   </tr>
   <tr>
-    <td>Finding Materials<br><img src="videos/Example_4_findingMaterials-ezgif.com-video-to-gif-converter.gif" alt="Example 4: Finding Materials"></td>
+    <td>Finding Materials<br><img src="videos/Example_4_findingMaterials.webp" alt="Example 4: Finding Materials"></td>
   </tr>
 </table>
 
